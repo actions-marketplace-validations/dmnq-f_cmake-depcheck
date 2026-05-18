@@ -11,7 +11,7 @@ Scans CMake files for `FetchContent_` dependencies, checks upstream repositories
 ### GitHub Action
 
 ```yaml
-- uses: dmnq-f/cmake-depcheck@v2
+- uses: dmnq-f/cmake-depcheck@v3
   with:
     path: CMakeLists.txt
     fail-on-updates: true # Default: false
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dmnq-f/cmake-depcheck@v2
+      - uses: dmnq-f/cmake-depcheck@v3
         with:
           path: CMakeLists.txt
           # Additional options see below
@@ -72,7 +72,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v6
-  - uses: dmnq-f/cmake-depcheck@v2
+  - uses: dmnq-f/cmake-depcheck@v3
     with:
       path: CMakeLists.txt
       create-prs: true
@@ -84,7 +84,7 @@ steps:
 Use `update-types` to limit which update types appear in results, trigger `fail-on-updates`, or get PRs. This is a scan-level filter — non-matching `update-available` results are excluded from all outputs.
 
 ```yaml
-- uses: dmnq-f/cmake-depcheck@v2
+- uses: dmnq-f/cmake-depcheck@v3
   with:
     path: CMakeLists.txt
     update-types: minor,patch
