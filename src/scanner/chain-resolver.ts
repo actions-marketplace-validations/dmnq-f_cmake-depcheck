@@ -1,6 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { findClosingParen, lineNumberAt, stripComments, tokenize } from '../cmake-utils.js';
+import {
+  findClosingParen,
+  lineNumberAt,
+  stripComments,
+  tokenize,
+  trailingCommentOnLineContaining,
+} from '../cmake-utils.js';
 import { SHA_PATTERN } from '../constants.js';
 import { FetchContentDependency } from '../parser/types.js';
 
@@ -10,6 +16,18 @@ export interface VariableInfo {
   file: string;
   /** Line number of the set() call */
   line: number;
+  /**
+   * Trailing comment body on the `set()` line, cleaned. Cosmetic only —
+   * propagated to consuming deps so PR generation can update the comment
+   * alongside a SHA rewrite.
+   */
+  hint?: string;
+  /**
+   * Trailing-comment fragment of the `set()` line as it appears in source,
+   * starting from the whitespace before `#` through end of line. Preserved
+   * verbatim for `computeEdit` to reproduce whitespace exactly.
+   */
+  hintRaw?: string;
 }
 
 export interface ChainResult {
@@ -98,7 +116,14 @@ function extractSetCalls(content: string, vars: Map<string, VariableInfo>, fileP
     }
 
     const line = lineNumberAt(content, match.index);
-    vars.set(varName, { value, file: filePath, line });
+    const setEndLine = lineNumberAt(content, closeIdx);
+    const trailing = trailingCommentOnLineContaining(content, tokens[1], line, setEndLine);
+    const info: VariableInfo = { value, file: filePath, line };
+    if (trailing) {
+      info.hint = trailing.comment;
+      info.hintRaw = trailing.raw;
+    }
+    vars.set(varName, info);
   }
 }
 
@@ -260,9 +285,17 @@ export function resolveDependencyVariables(
       dep.gitRepository = resolveVariables(dep.gitRepository, vars) ?? dep.gitRepository;
     }
     if (dep.gitTag?.includes('${')) {
+      const varName = dep.gitTag.match(/\$\{(\w+)\}/)?.[1];
       dep.gitTagRaw = dep.gitTag;
       dep.gitTag = resolveVariables(dep.gitTag, vars) ?? dep.gitTag;
       dep.gitTagIsSha = SHA_PATTERN.test(dep.gitTag);
+      if (varName && dep.gitTagComment === undefined) {
+        const info = vars.get(varName);
+        if (info?.hint !== undefined) {
+          dep.gitTagComment = info.hint;
+          dep.gitTagCommentRaw = info.hintRaw;
+        }
+      }
     }
     if (dep.url?.includes('${')) {
       dep.urlRaw = dep.url;

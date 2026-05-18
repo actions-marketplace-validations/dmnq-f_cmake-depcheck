@@ -157,6 +157,10 @@ export function createProgram(): Command {
     .option('--scan-only', 'List dependencies without checking for updates')
     .option('--json', 'Emit JSON to stdout (suppresses standard CLI output)')
     .option('--fail-on-updates', 'Exit with code 1 if any updates are available')
+    .option(
+      '--no-resolve-sha',
+      'Skip SHA reverse-resolution; SHA-pinned GIT_TAG values stay classified as pinned',
+    )
     .action(
       async (options: {
         path: string;
@@ -166,6 +170,7 @@ export function createProgram(): Command {
         scanOnly?: boolean;
         json?: boolean;
         failOnUpdates?: boolean;
+        resolveSha: boolean;
       }) => {
         if (options.failOnUpdates && options.scanOnly) {
           console.error(
@@ -205,6 +210,7 @@ export function createProgram(): Command {
           ignoreNames: options.ignore,
           updateTypes,
           scanOnly: options.scanOnly,
+          resolveSha: options.resolveSha,
           onProgress,
         });
 

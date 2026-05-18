@@ -15,6 +15,7 @@ interface JsonDependency {
   gitRepository?: string;
   gitTag?: string;
   gitTagIsSha?: boolean;
+  gitTagComment?: string;
   url?: string;
   location: {
     file: string;
@@ -23,11 +24,14 @@ interface JsonDependency {
   };
   updateCheck?: {
     status: string;
+    versionSource?: 'git-tag' | 'sha' | 'url';
     latestVersion?: string;
     updateType?: string;
     error?: string;
     updatedUrl?: string;
     resolvedVersion?: string;
+    resolvedTag?: string;
+    latestSha?: string;
   };
 }
 
@@ -61,6 +65,7 @@ function buildDependency(
     if (dep.gitRepository !== undefined) entry.gitRepository = dep.gitRepository;
     if (dep.gitTag !== undefined) entry.gitTag = dep.gitTag;
     if (dep.gitTagIsSha !== undefined) entry.gitTagIsSha = dep.gitTagIsSha;
+    if (dep.gitTagComment !== undefined) entry.gitTagComment = dep.gitTagComment;
   } else {
     if (dep.url !== undefined) entry.url = dep.url;
   }
@@ -70,6 +75,7 @@ function buildDependency(
     if (result) {
       const check: JsonDependency['updateCheck'] = {
         status: result.status,
+        versionSource: result.versionSource,
       };
       if (result.latestVersion !== undefined) check.latestVersion = result.latestVersion;
       if (result.updateType !== undefined) check.updateType = result.updateType;
@@ -78,6 +84,8 @@ function buildDependency(
       }
       if (result.updatedUrl !== undefined) check.updatedUrl = result.updatedUrl;
       if (result.resolvedVersion !== undefined) check.resolvedVersion = result.resolvedVersion;
+      if (result.resolvedTag !== undefined) check.resolvedTag = result.resolvedTag;
+      if (result.latestSha !== undefined) check.latestSha = result.latestSha;
       entry.updateCheck = check;
     }
   }

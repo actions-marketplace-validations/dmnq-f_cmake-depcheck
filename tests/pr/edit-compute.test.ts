@@ -23,6 +23,7 @@ function makeResult(overrides: Partial<UpdateCheckResult> = {}): UpdateCheckResu
   return {
     dep: makeDep(),
     status: 'update-available',
+    versionSource: 'git-tag',
     latestVersion: '12.1.0',
     updateType: 'major',
     ...overrides,
@@ -224,6 +225,123 @@ describe('computeEdit', () => {
         url: 'https://example.com/lib.tar.gz',
       });
       const result = makeResult({ dep, updatedUrl: undefined });
+      expect(computeEdit(result)).toBeNull();
+    });
+  });
+
+  describe('SHA-resolved git dep (composite edit)', () => {
+    const PINNED_SHA = '407c905e45ad75fc29bf0f9bb7c5c2fd3475976f';
+    const NEW_SHA = 'bbbbbb0000000000000000000000000000000000';
+
+    function makeShaResult(
+      overrides: Partial<UpdateCheckResult> = {},
+      depOverrides: Partial<FetchContentDependency> = {},
+    ): UpdateCheckResult {
+      return makeResult({
+        dep: makeDep({ gitTag: PINNED_SHA, gitTagIsSha: true, ...depOverrides }),
+        versionSource: 'sha',
+        resolvedTag: 'v12.1.0',
+        latestVersion: 'v12.2.0',
+        latestSha: NEW_SHA,
+        updateType: 'minor',
+        ...overrides,
+      });
+    }
+
+    it('rewrites SHA and version-shaped comment together, preserving whitespace', () => {
+      const result = makeShaResult(
+        {},
+        {
+          gitTagComment: '12.1.0',
+          gitTagCommentRaw: '  # 12.1.0',
+        },
+      );
+      const edit = computeEdit(result);
+      expect(edit).toEqual({
+        file: '/project/CMakeLists.txt',
+        line: 10,
+        endLine: 14,
+        oldText: `${PINNED_SHA}  # 12.1.0`,
+        newText: `${NEW_SHA}  # 12.2.0`,
+      });
+    });
+
+    it('preserves extra whitespace between SHA and #', () => {
+      const result = makeShaResult(
+        {},
+        {
+          gitTagComment: '12.1.0',
+          gitTagCommentRaw: '   # 12.1.0',
+        },
+      );
+      const edit = computeEdit(result);
+      expect(edit?.oldText).toBe(`${PINNED_SHA}   # 12.1.0`);
+      expect(edit?.newText).toBe(`${NEW_SHA}   # 12.1.0`.replace('12.1.0', '12.2.0'));
+    });
+
+    it('preserves a non-version trailing comment verbatim', () => {
+      const result = makeShaResult(
+        {},
+        {
+          gitTagComment: 'pinning until 5.x lands',
+          gitTagCommentRaw: '  # pinning until 5.x lands',
+        },
+      );
+      const edit = computeEdit(result);
+      expect(edit?.oldText).toBe(`${PINNED_SHA}  # pinning until 5.x lands`);
+      expect(edit?.newText).toBe(`${NEW_SHA}  # pinning until 5.x lands`);
+    });
+
+    it('rewrites only the version token within a longer comment', () => {
+      const result = makeShaResult(
+        {},
+        {
+          gitTagComment: 'bumped to 12.1.0 for security',
+          gitTagCommentRaw: '  # bumped to 12.1.0 for security',
+        },
+      );
+      const edit = computeEdit(result);
+      expect(edit?.newText).toBe(`${NEW_SHA}  # bumped to 12.2.0 for security`);
+    });
+
+    it('aligns prefix style when comment uses a different convention than upstream', () => {
+      const result = makeShaResult(
+        { latestVersion: 'v12.2.0' },
+        {
+          gitTagComment: '12.1.0',
+          gitTagCommentRaw: '  # 12.1.0',
+        },
+      );
+      const edit = computeEdit(result);
+      expect(edit?.newText).toBe(`${NEW_SHA}  # 12.2.0`);
+    });
+
+    it('rewrites only the SHA when no trailing comment is present', () => {
+      const result = makeShaResult();
+      const edit = computeEdit(result);
+      expect(edit).toEqual({
+        file: '/project/CMakeLists.txt',
+        line: 10,
+        endLine: 14,
+        oldText: PINNED_SHA,
+        newText: NEW_SHA,
+      });
+    });
+
+    it('handles prefix-style hint (VER-2-14-3 → VER-2-14-4)', () => {
+      const result = makeShaResult(
+        { resolvedTag: 'VER-2-14-3', latestVersion: 'VER-2-14-4' },
+        {
+          gitTagComment: 'VER-2-14-3',
+          gitTagCommentRaw: '  # VER-2-14-3',
+        },
+      );
+      const edit = computeEdit(result);
+      expect(edit?.newText).toBe(`${NEW_SHA}  # VER-2-14-4`);
+    });
+
+    it('returns null when SHA-resolved result is missing latestSha', () => {
+      const result = makeShaResult({ latestSha: undefined });
       expect(computeEdit(result)).toBeNull();
     });
   });

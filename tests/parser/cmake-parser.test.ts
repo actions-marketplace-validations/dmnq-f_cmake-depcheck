@@ -62,6 +62,75 @@ describe('cmake-parser', () => {
       expect(deps[1].gitTag).toBe('79524ddd08a4ec981b7fea76afd08ee05f83755d');
       expect(deps[1].gitTagIsSha).toBe(true);
     });
+
+    it('captures trailing comment alongside SHA', () => {
+      const deps = parseFixture('commit-sha');
+
+      expect(deps[0].gitTagComment).toBe('12.1.0');
+      expect(deps[0].gitTagCommentRaw).toBe(' # 12.1.0');
+
+      expect(deps[1].gitTagComment).toBeUndefined();
+      expect(deps[1].gitTagCommentRaw).toBeUndefined();
+    });
+  });
+
+  describe('trailing-comment capture', () => {
+    it('captures comment on a single-line declaration', () => {
+      const deps = parseCMakeContent(
+        'FetchContent_Declare(foo GIT_REPOSITORY https://x.test/y.git GIT_TAG abcd123  # 14.1.0\n)\n',
+        '/x',
+      );
+      expect(deps).toHaveLength(1);
+      expect(deps[0].gitTagComment).toBe('14.1.0');
+      expect(deps[0].gitTagCommentRaw).toBe('  # 14.1.0');
+    });
+
+    it('returns no comment fields when none is present', () => {
+      const deps = parseCMakeContent(
+        'FetchContent_Declare(foo GIT_REPOSITORY https://x.test/y.git GIT_TAG abcd123\n)\n',
+        '/x',
+      );
+      expect(deps).toHaveLength(1);
+      expect(deps[0].gitTagComment).toBeUndefined();
+      expect(deps[0].gitTagCommentRaw).toBeUndefined();
+    });
+
+    it('captures comment on a multi-line declaration where SHA is on its own line', () => {
+      const deps = parseCMakeContent(
+        [
+          'FetchContent_Declare(',
+          '  foo',
+          '  GIT_REPOSITORY https://x.test/y.git',
+          '  GIT_TAG',
+          '    abcd123  # 14.1.0',
+          ')',
+          '',
+        ].join('\n'),
+        '/x',
+      );
+      expect(deps).toHaveLength(1);
+      expect(deps[0].gitTagComment).toBe('14.1.0');
+      expect(deps[0].gitTagCommentRaw).toBe('  # 14.1.0');
+    });
+
+    it('captures comment when GIT_TAG references a variable', () => {
+      const deps = parseCMakeContent(
+        'FetchContent_Declare(foo GIT_REPOSITORY https://x.test/y.git GIT_TAG ${MY_VAR}  # 14.1.0\n)\n',
+        '/x',
+      );
+      expect(deps).toHaveLength(1);
+      expect(deps[0].gitTag).toBe('${MY_VAR}');
+      expect(deps[0].gitTagComment).toBe('14.1.0');
+      expect(deps[0].gitTagCommentRaw).toBe('  # 14.1.0');
+    });
+
+    it('preserves a non-version comment verbatim', () => {
+      const deps = parseCMakeContent(
+        'FetchContent_Declare(foo GIT_REPOSITORY https://x.test/y.git GIT_TAG abcd123  # pinned for bug XYZ\n)\n',
+        '/x',
+      );
+      expect(deps[0].gitTagComment).toBe('pinned for bug XYZ');
+    });
   });
 
   describe('case-insensitive matching', () => {

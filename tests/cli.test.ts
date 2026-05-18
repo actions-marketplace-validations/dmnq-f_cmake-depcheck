@@ -495,4 +495,26 @@ describe('cli', () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  describe('--no-resolve-sha', () => {
+    it('default invocation passes resolveSha:true (or undefined) to checkForUpdates', async () => {
+      mockedCheckForUpdates.mockImplementation(async (deps) =>
+        deps.map((dep): UpdateCheckResult => ({ dep, status: 'up-to-date' })),
+      );
+      await runScan('--path', path.join(FIXTURES, 'basic-git'));
+      expect(mockedCheckForUpdates).toHaveBeenCalledTimes(1);
+      const opts = mockedCheckForUpdates.mock.calls[0][2] ?? {};
+      expect(opts.resolveSha).not.toBe(false);
+    });
+
+    it('--no-resolve-sha passes resolveSha:false to checkForUpdates', async () => {
+      mockedCheckForUpdates.mockImplementation(async (deps) =>
+        deps.map((dep): UpdateCheckResult => ({ dep, status: 'up-to-date' })),
+      );
+      await runScan('--path', path.join(FIXTURES, 'basic-git'), '--no-resolve-sha');
+      expect(mockedCheckForUpdates).toHaveBeenCalledTimes(1);
+      const opts = mockedCheckForUpdates.mock.calls[0][2] ?? {};
+      expect(opts.resolveSha).toBe(false);
+    });
+  });
 });

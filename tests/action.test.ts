@@ -194,6 +194,29 @@ describe('action', () => {
       const call = mockScan.mock.calls[0][0] as ScanOptions;
       expect(call.ignoreNames).toEqual(['googletest', 'fmt', 'spdlog']);
     });
+
+    it('passes resolveSha:true by default (input absent)', async () => {
+      mockScan.mockResolvedValue(makeResult([]));
+      await runAction();
+      const call = mockScan.mock.calls[0][0] as ScanOptions;
+      expect(call.resolveSha).toBe(true);
+    });
+
+    it('passes resolveSha:false when resolve-sha input is "false"', async () => {
+      mockGetInput.mockImplementation((name: string) => (name === 'resolve-sha' ? 'false' : ''));
+      mockScan.mockResolvedValue(makeResult([]));
+      await runAction();
+      const call = mockScan.mock.calls[0][0] as ScanOptions;
+      expect(call.resolveSha).toBe(false);
+    });
+
+    it('passes resolveSha:true when resolve-sha input is explicitly "true"', async () => {
+      mockGetInput.mockImplementation((name: string) => (name === 'resolve-sha' ? 'true' : ''));
+      mockScan.mockResolvedValue(makeResult([]));
+      await runAction();
+      const call = mockScan.mock.calls[0][0] as ScanOptions;
+      expect(call.resolveSha).toBe(true);
+    });
   });
 
   describe('annotations', () => {

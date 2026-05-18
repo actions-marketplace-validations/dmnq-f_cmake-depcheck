@@ -71,6 +71,7 @@ export async function run(): Promise<void> {
   const ignore = parseMultiLineInput(core.getInput('ignore'));
   const updateTypesRaw = core.getInput('update-types');
   const updateTypes = updateTypesRaw ? parseUpdateTypes(updateTypesRaw) : undefined;
+  const resolveSha = core.getInput('resolve-sha') !== 'false';
 
   const result = await scan({
     path: inputPath,
@@ -78,6 +79,7 @@ export async function run(): Promise<void> {
     excludePatterns: exclude.length > 0 ? exclude.map((p) => new RegExp(p)) : undefined,
     ignoreNames: ignore.length > 0 ? ignore : undefined,
     updateTypes,
+    resolveSha,
   });
 
   // Annotations

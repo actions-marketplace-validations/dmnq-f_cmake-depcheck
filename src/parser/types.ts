@@ -29,6 +29,22 @@ export interface FetchContentDependency {
   /** Original URL value before variable resolution */
   urlRaw?: string;
 
+  /**
+   * Trailing comment body on the GIT_TAG line, with the leading `#` and
+   * surrounding whitespace trimmed. Captured for cosmetic preservation when
+   * PR generation rewrites the line; never used as a detection mechanism for
+   * update checking.
+   */
+  gitTagComment?: string;
+
+  /**
+   * The trailing-comment fragment of the GIT_TAG line as it appears in source,
+   * starting from the first whitespace before `#` through end of line.
+   * Preserved verbatim so `computeEdit` can reproduce whitespace exactly when
+   * rewriting the line.
+   */
+  gitTagCommentRaw?: string;
+
   /** Location in the source file for potential future auto-fix */
   location: {
     file: string;

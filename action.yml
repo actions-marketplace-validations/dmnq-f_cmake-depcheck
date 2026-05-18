@@ -35,6 +35,10 @@ inputs:
     description: 'Create pull requests for available updates'
     required: false
     default: 'false'
+  resolve-sha:
+    description: 'Reverse-resolve SHA-pinned GIT_TAG values against upstream tag commit SHAs to enable update checking on them. Set to false to keep SHA-pinned deps classified as pinned.'
+    required: false
+    default: 'true'
   dry-run:
     description: 'Log what PRs would be created without actually creating them (requires create-prs: true)'
     required: false

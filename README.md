@@ -61,8 +61,9 @@ jobs:
 Set `create-prs: true` to open one pull request per outdated dependency. Each PR updates the version pin in the CMake source file — either the `GIT_TAG` value directly or the originating `set()` variable. PRs include upstream release notes (from GitHub Releases) for all versions between your current pin and the latest, capped at the 5 most recent versions, with a link to the full changelog.
 
 **Token and repository settings:**
-* Ensure your repository settings allow for automatic PR creation, see the corresponding [Managing GitHub Actions settings for a repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#preventing-github-actions-from-creating-or-approving-pull-requests) section.
-* PRs created with the default `GITHUB_TOKEN` will not trigger `on: pull_request` workflows — this is a [GitHub restriction](https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow) to prevent recursive runs. If your branch protection requires status checks, use a GitHub App token or PAT instead:
+
+- Ensure your repository settings allow for automatic PR creation, see the corresponding [Managing GitHub Actions settings for a repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#preventing-github-actions-from-creating-or-approving-pull-requests) section.
+- PRs created with the default `GITHUB_TOKEN` will not trigger `on: pull_request` workflows — this is a [GitHub restriction](https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow) to prevent recursive runs. If your branch protection requires status checks, use a GitHub App token or PAT instead:
 
 ```yaml
 permissions:
@@ -94,27 +95,28 @@ Valid values: `major`, `minor`, `patch`, `unknown`. The job summary notes how ma
 
 ### Inputs
 
-| Input | Description | Default |
-|---|---|---|
-| `path` | Path to CMakeLists.txt (recommended, will follow project hierarchy) or project root directory (simple directory tree traversal) | `CMakeLists.txt` |
-| `scan-only` | List dependencies without checking for updates | `false` |
-| `exclude` | Directory exclusion patterns, one per line | |
-| `ignore` | Dependency names to exclude from results, one per line | |
-| `update-types` | Only include these update types in results and PRs (comma-separated: `major`, `minor`, `patch`, `unknown`) | |
-| `fail-on-updates` | Fail the workflow if any dependency has an available update | `false` |
-| `create-prs` | Create pull requests for available updates | `false` |
-| `dry-run` | Log what PRs would be created without actually creating them (requires `create-prs: true`) | `false` |
-| `token` | GitHub token for creating PRs | `${{ github.token }}` |
+| Input             | Description                                                                                                                                                                    | Default               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `path`            | Path to CMakeLists.txt (recommended, will follow project hierarchy) or project root directory (simple directory tree traversal)                                                | `CMakeLists.txt`      |
+| `scan-only`       | List dependencies without checking for updates                                                                                                                                 | `false`               |
+| `exclude`         | Directory exclusion patterns, one per line                                                                                                                                     |                       |
+| `ignore`          | Dependency names to exclude from results, one per line                                                                                                                         |                       |
+| `update-types`    | Only include these update types in results and PRs (comma-separated: `major`, `minor`, `patch`, `unknown`)                                                                     |                       |
+| `fail-on-updates` | Fail the workflow if any dependency has an available update                                                                                                                    | `false`               |
+| `create-prs`      | Create pull requests for available updates                                                                                                                                     | `false`               |
+| `dry-run`         | Log what PRs would be created without actually creating them (requires `create-prs: true`)                                                                                     | `false`               |
+| `resolve-sha`     | Reverse-resolve SHA-pinned `GIT_TAG` values against upstream tag commit SHAs to enable update checking on them. Set to `false` to keep SHA-pinned deps classified as `pinned`. | `true`                |
+| `token`           | GitHub token for creating PRs                                                                                                                                                  | `${{ github.token }}` |
 
 ### Outputs
 
-| Output | Description |
-|---|---|
-| `has-updates` | Whether any dependency has an available update (`true`/`false`) |
-| `total` | Total number of dependencies found |
-| `updates-available` | Number of dependencies with available updates |
-| `result-json` | Full scan result as JSON string |
-| `prs-created` | Number of pull requests created |
+| Output              | Description                                                     |
+| ------------------- | --------------------------------------------------------------- |
+| `has-updates`       | Whether any dependency has an available update (`true`/`false`) |
+| `total`             | Total number of dependencies found                              |
+| `updates-available` | Number of dependencies with available updates                   |
+| `result-json`       | Full scan result as JSON string                                 |
+| `prs-created`       | Number of pull requests created                                 |
 
 ## CLI
 
@@ -141,6 +143,7 @@ cmake-depcheck scan --path ./CMakeLists.txt
 ```
 
 Chain resolution handles:
+
 - `include(cmake/deps.cmake)` — resolved relative to the file containing the call
 - `include(cmake/deps)` — `.cmake` extension appended automatically
 - `add_subdirectory(libs/networking)` — looks for `CMakeLists.txt` in the subdirectory
@@ -216,6 +219,22 @@ Use `--fail-on-updates` to exit with code 1 when any dependency has an available
 ```bash
 cmake-depcheck scan --path . --fail-on-updates
 cmake-depcheck scan --path . --json --fail-on-updates
+```
+
+### SHA-pinned dependencies
+
+By default, `GIT_TAG` values that look like commit SHAs are reverse-resolved against upstream tags: if the pinned SHA matches the commit SHA of an upstream tag, that tag drives update checking like a regular tag. SHA pins that don't match any upstream tag stay classified as `pinned`. Generated PRs rewrite the SHA to the new tag's commit SHA; any trailing comment (e.g. `# 14.1.0`) gets its version token updated alongside, preserving the surrounding text and whitespace.
+
+A trailing comment containing the words `pin`, `pinned`, or `pinning` acts as a per-dep opt-out — the dep stays classified as `pinned` even if its SHA matches an upstream tag:
+
+```cmake
+GIT_TAG c740f0fda4274d6ffd2e5b64a25b06ef69803a07  # pinned to bugfix XYZ
+```
+
+Use `--no-resolve-sha` to disable SHA reverse-resolution globally:
+
+```bash
+cmake-depcheck scan --path . --no-resolve-sha
 ```
 
 ## Limitations

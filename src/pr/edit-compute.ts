@@ -1,5 +1,6 @@
 import type { UpdateCheckResult } from '../checker/types.js';
 import type { VariableInfo } from '../scanner/chain-resolver.js';
+import { findVersionTokenInComment } from '../checker/version-compare.js';
 
 export interface FileEdit {
   /** Absolute path to the file to edit */
@@ -66,8 +67,39 @@ export function computeEdit(
     };
   }
 
-  // Case 2: Git dep with literal GIT_TAG
-  if (dep.sourceType === 'git' && dep.gitTag && result.latestVersion) {
+  // Case 2a: SHA-resolved git dep — rewrite SHA and any version token in the trailing comment
+  if (
+    dep.sourceType === 'git' &&
+    dep.gitTagIsSha &&
+    dep.gitTag &&
+    result.versionSource === 'sha' &&
+    result.latestSha
+  ) {
+    const oldFragment = dep.gitTagCommentRaw ?? '';
+    let newFragment = oldFragment;
+    if (oldFragment) {
+      const oldToken = findVersionTokenInComment(oldFragment);
+      if (oldToken && result.latestVersion) {
+        const newToken = alignPrefix(oldToken, result.latestVersion);
+        newFragment = oldFragment.replace(oldToken, newToken);
+      }
+    }
+    return {
+      file: dep.location.file,
+      line: dep.location.startLine,
+      endLine: dep.location.endLine,
+      oldText: dep.gitTag + oldFragment,
+      newText: result.latestSha + newFragment,
+    };
+  }
+
+  // Case 2: Git dep with literal GIT_TAG (non-SHA — SHA-resolved deps are handled in case 2a)
+  if (
+    dep.sourceType === 'git' &&
+    dep.gitTag &&
+    result.latestVersion &&
+    result.versionSource !== 'sha'
+  ) {
     const newVersion = alignPrefix(dep.gitTag, result.latestVersion);
     if (newVersion === dep.gitTag) return null;
 

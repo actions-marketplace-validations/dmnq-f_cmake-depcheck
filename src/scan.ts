@@ -19,6 +19,12 @@ export interface ScanOptions {
   scanOnly?: boolean;
   /** Update types to include in results. If set, update-available results with non-matching updateType are filtered out. */
   updateTypes?: Set<string>;
+  /**
+   * Reverse-resolve SHA-pinned git deps against upstream tag commit SHAs to
+   * enable update checking on them. When `false`, SHA-pinned deps stay
+   * classified as `'pinned'` and are not network-checked. Defaults to `true`.
+   */
+  resolveSha?: boolean;
   /** Progress callback for update checking — caller decides if/how to show progress */
   onProgress?: (completed: number, total: number) => void;
 }
@@ -99,7 +105,9 @@ export async function scan(options: ScanOptions): Promise<ScanResult> {
 
   let updateResults: UpdateCheckResult[] | undefined;
   if (!options.scanOnly) {
-    updateResults = await checkForUpdates(deps, options.onProgress);
+    updateResults = await checkForUpdates(deps, options.onProgress, {
+      resolveSha: options.resolveSha,
+    });
   }
 
   let filteredCount = 0;

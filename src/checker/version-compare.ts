@@ -195,3 +195,23 @@ export function findLatestVersion(currentTag: string, allTags: string[]): Versio
 
   return trySemver(currentTag, allTags) ?? tryPrefixBased(currentTag, allTags);
 }
+
+/**
+ * Find the first version-shaped token in a freeform string (e.g. a trailing
+ * comment). Returns the substring that parses as semver (`14.1.0`, `v14.1.0`)
+ * or has a recognizable version prefix followed by digits (`VER-2-14-3`,
+ * `release-1.0`). Returns null when no version-shaped token is present.
+ *
+ * Used only by PR-edit construction to know which substring inside a trailing
+ * comment to replace alongside a SHA rewrite. Not part of the detection path
+ * — comments are never used to drive update checking.
+ */
+export function findVersionTokenInComment(comment: string): string | null {
+  for (const token of comment.split(/\s+/)) {
+    if (!token) continue;
+    if (parseSemver(token)) return token;
+    const prefix = extractPrefix(token);
+    if (prefix && /\d/.test(token.substring(prefix.length))) return token;
+  }
+  return null;
+}

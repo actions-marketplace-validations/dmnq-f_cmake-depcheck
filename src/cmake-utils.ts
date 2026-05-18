@@ -49,6 +49,54 @@ export function stripQuotes(arg: string): string {
 }
 
 /**
+ * Find the first line within `[startLine, endLine]` of `content` that contains
+ * `needle`, and extract its trailing comment.
+ *
+ * Returns `{ comment, raw }` where `comment` is the body after `#` (trimmed)
+ * and `raw` is the full tail from the whitespace immediately before `#`
+ * through end of line (trailing whitespace trimmed). `raw` is anchored to the
+ * line's `#` — any non-whitespace text between the needle and `#` (e.g. the
+ * closing `")` of a `set()` call) is not included.
+ *
+ * Returns `undefined` when no line within the range contains `needle` or the
+ * matching line has no `#` comment. Lines are 1-based; `endLine` is inclusive.
+ */
+export function trailingCommentOnLineContaining(
+  content: string,
+  needle: string,
+  startLine: number,
+  endLine: number,
+): { comment: string; raw: string } | undefined {
+  const lines = content.split('\n');
+  const last = Math.min(endLine, lines.length);
+  for (let i = Math.max(1, startLine) - 1; i < last; i++) {
+    const line = lines[i];
+    if (line.indexOf(needle) === -1) continue;
+    const hashIdx = line.indexOf('#');
+    if (hashIdx === -1) return undefined;
+    const beforeHash = line.substring(0, hashIdx);
+    const wsMatch = beforeHash.match(/\s+$/);
+    const wsStart = wsMatch ? hashIdx - wsMatch[0].length : hashIdx;
+    const raw = line.substring(wsStart).replace(/\s+$/, '');
+    const comment = line.substring(hashIdx + 1).trim();
+    return { comment, raw };
+  }
+  return undefined;
+}
+
+/**
+ * Returns true when the comment contains an explicit pin indicator
+ * (`pin`, `pinned`, or `pinning` as a standalone word, case-insensitive).
+ *
+ * Used to let maintainers deliberately freeze a SHA-pinned dep via the
+ * trailing comment without disabling SHA resolution globally. Word boundaries
+ * prevent false positives on `pinpoint`, `endpoint`, `spinning`, etc.
+ */
+export function commentIndicatesPin(comment: string): boolean {
+  return /\b(pin|pinned|pinning)\b/i.test(comment);
+}
+
+/**
  * Tokenize CMake arguments. Handles quoted and unquoted args,
  * line continuations (backslash at EOL).
  */

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveChain } from '../../src/scanner/chain-resolver.js';
+import { resolveChain, resolveDependencyVariables } from '../../src/scanner/chain-resolver.js';
+import { parseCMakeContent } from '../../src/parser/cmake-parser.js';
+import type { FetchContentDependency } from '../../src/parser/types.js';
 
 const FIXTURES = path.join(__dirname, '..', 'fixtures');
 
@@ -154,5 +157,53 @@ describe('chain-resolver', () => {
     expect(rel).toContain(path.join('cmake', 'first.cmake'));
     expect(rel).toContain(path.join('cmake', 'second.cmake'));
     expect(result.warnings).toHaveLength(0);
+  });
+
+  describe('set()-line trailing comments (hint capture)', () => {
+    function deps(fixtureName: string): {
+      deps: FetchContentDependency[];
+      result: ReturnType<typeof resolveChain>;
+    } {
+      const result = resolveFixture(fixtureName);
+      const allDeps: FetchContentDependency[] = [];
+      for (const file of result.files) {
+        allDeps.push(...parseCMakeContent(fs.readFileSync(file, 'utf-8'), file));
+      }
+      resolveDependencyVariables(allDeps, result.vars);
+      return { deps: allDeps, result };
+    }
+
+    it('captures hint/hintRaw on the set() VariableInfo', () => {
+      const { result } = deps('chain-sha-hint');
+      const fmt = result.vars.get('FMT_COMMIT');
+      const spdlog = result.vars.get('SPDLOG_COMMIT');
+
+      expect(fmt?.hint).toBe('12.1.0');
+      expect(fmt?.hintRaw).toBe('  # 12.1.0');
+      expect(spdlog?.hint).toBeUndefined();
+      expect(spdlog?.hintRaw).toBeUndefined();
+    });
+
+    it('propagates hint from set() to consuming GIT_TAG ${VAR} dep', () => {
+      const { deps: allDeps } = deps('chain-sha-hint');
+      const fmt = allDeps.find((d) => d.name === 'fmt');
+      const spdlog = allDeps.find((d) => d.name === 'spdlog');
+
+      expect(fmt?.gitTag).toBe('407c905e45ad75fc29bf0f9bb7c5c2fd3475976f');
+      expect(fmt?.gitTagIsSha).toBe(true);
+      expect(fmt?.gitTagComment).toBe('12.1.0');
+      expect(fmt?.gitTagCommentRaw).toBe('  # 12.1.0');
+
+      expect(spdlog?.gitTag).toBe('79524ddd08a4ec981b7fea76afd08ee05f83755d');
+      expect(spdlog?.gitTagComment).toBeUndefined();
+      expect(spdlog?.gitTagCommentRaw).toBeUndefined();
+    });
+
+    it('inline GIT_TAG comment wins over set() hint when both are present', () => {
+      const { deps: allDeps } = deps('chain-sha-hint-inline-wins');
+      const fmt = allDeps.find((d) => d.name === 'fmt');
+      expect(fmt?.gitTagComment).toBe('14.1.0');
+      expect(fmt?.gitTagCommentRaw).toBe('  # 14.1.0');
+    });
   });
 });

@@ -21,7 +21,7 @@ function makeResult(
   dep: FetchContentDependency,
   overrides: Partial<Omit<UpdateCheckResult, 'dep'>> = {},
 ): UpdateCheckResult {
-  return { dep, status: 'up-to-date', ...overrides };
+  return { dep, status: 'up-to-date', versionSource: 'git-tag', ...overrides };
 }
 
 function baseOptions(overrides: Partial<JsonOutputOptions> = {}): JsonOutputOptions {
@@ -317,5 +317,42 @@ describe('formatJsonOutput', () => {
     const deps = output.dependencies as Record<string, unknown>[];
     const check = deps[0].updateCheck as Record<string, unknown>;
     expect(check.resolvedVersion).toBe('v1.2.3');
+  });
+
+  it('surfaces versionSource on updateCheck for every classification', () => {
+    const dep = makeDep();
+    const result = makeResult(dep, { status: 'pinned', versionSource: 'sha' });
+    const output = formatJsonOutput(
+      baseOptions({ deps: [dep], updateResults: [result] }),
+    ) as Record<string, unknown>;
+    const deps = output.dependencies as Record<string, unknown>[];
+    const check = deps[0].updateCheck as Record<string, unknown>;
+    expect(check.versionSource).toBe('sha');
+  });
+
+  it('surfaces resolvedTag and latestSha for SHA-resolved update-available results', () => {
+    const dep = makeDep({
+      gitTag: '407c905e45ad75fc29bf0f9bb7c5c2fd3475976f',
+      gitTagIsSha: true,
+      gitTagComment: '12.1.0',
+    });
+    const result = makeResult(dep, {
+      status: 'update-available',
+      versionSource: 'sha',
+      latestVersion: 'v12.2.0',
+      updateType: 'minor',
+      resolvedTag: 'v12.1.0',
+      latestSha: 'bbbbbb0000000000000000000000000000000000',
+    });
+    const output = formatJsonOutput(
+      baseOptions({ deps: [dep], updateResults: [result] }),
+    ) as Record<string, unknown>;
+    const deps = output.dependencies as Record<string, unknown>[];
+    const check = deps[0].updateCheck as Record<string, unknown>;
+
+    expect(check.versionSource).toBe('sha');
+    expect(check.resolvedTag).toBe('v12.1.0');
+    expect(check.latestSha).toBe('bbbbbb0000000000000000000000000000000000');
+    expect(deps[0].gitTagComment).toBe('12.1.0');
   });
 });

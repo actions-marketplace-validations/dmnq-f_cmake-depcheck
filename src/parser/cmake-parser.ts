@@ -1,5 +1,11 @@
 import { FetchContentDependency } from './types.js';
-import { findClosingParen, lineNumberAt, stripComments, tokenize } from '../cmake-utils.js';
+import {
+  findClosingParen,
+  lineNumberAt,
+  stripComments,
+  tokenize,
+  trailingCommentOnLineContaining,
+} from '../cmake-utils.js';
 import { SHA_PATTERN } from '../constants.js';
 
 /** Keywords we extract values for */
@@ -76,6 +82,14 @@ export function parseCMakeContent(content: string, filePath: string): FetchConte
     // Simple-form FetchContent_Populate(name) is just a trigger, not a declaration
     const isPopulate = match[1].toLowerCase() === 'populate';
     if (isPopulate && !dep.gitRepository && !dep.url) continue;
+
+    if (dep.gitTag !== undefined) {
+      const trailing = trailingCommentOnLineContaining(content, dep.gitTag, startLine, endLine);
+      if (trailing) {
+        dep.gitTagComment = trailing.comment;
+        dep.gitTagCommentRaw = trailing.raw;
+      }
+    }
 
     deps.push(dep);
   }

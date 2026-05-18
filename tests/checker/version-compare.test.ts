@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { findLatestVersion, findIntermediateTags } from '../../src/checker/version-compare.js';
+import {
+  findLatestVersion,
+  findIntermediateTags,
+  findVersionTokenInComment,
+} from '../../src/checker/version-compare.js';
 
 describe('findLatestVersion', () => {
   describe('semver comparison', () => {
@@ -159,5 +163,28 @@ describe('findLatestVersion', () => {
     it('returns null for non-parseable current tag with no prefix match', () => {
       expect(findLatestVersion('some-random-tag', ['v1.0.0', 'v2.0.0'])).toBeNull();
     });
+  });
+});
+
+describe('findVersionTokenInComment', () => {
+  it.each([
+    ['14.1.0', '14.1.0'],
+    ['v14.1.0', 'v14.1.0'],
+    ['VER-2-14-3', 'VER-2-14-3'],
+    ['release-1.0.0', 'release-1.0.0'],
+    ['security fix v2.0.0', 'v2.0.0'],
+    ['bumped to 14.1.0 for security', '14.1.0'],
+  ])('extracts %j as %j', (input, expected) => {
+    expect(findVersionTokenInComment(input)).toBe(expected);
+  });
+
+  it.each([
+    ['TODO bump', null],
+    ['pinning until 5.x lands', null],
+    ['pinned', null],
+    ['', null],
+    ['no version here', null],
+  ])('returns null for %j', (input, expected) => {
+    expect(findVersionTokenInComment(input)).toBe(expected);
   });
 });
