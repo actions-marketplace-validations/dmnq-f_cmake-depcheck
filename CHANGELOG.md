@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/dmnq-f/cmake-depcheck/compare/v2.0.1...v3.0.0) (2026-05-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* SHA-pinned `GIT_TAG` deps are now network-checked by default and may flip from `'pinned'` to `'update-available'`, which can trigger `--fail-on-updates` gates or auto-PR creation that previously ignored them. Set `--no-resolve-sha` (CLI), or `resolve-sha: 'false'` (action input) to restore prior behavior.
+
+### Features
+
+* Enable update checking on SHA-pinned dependencies ([#50](https://github.com/dmnq-f/cmake-depcheck/issues/50)) ([e8498bd](https://github.com/dmnq-f/cmake-depcheck/commit/e8498bdf499d510bb733fcd666b00c72c44e5670))
+
 ## [2.0.1](https://github.com/dmnq-f/cmake-depcheck/compare/v2.0.0...v2.0.1) (2026-04-14)
 
 
