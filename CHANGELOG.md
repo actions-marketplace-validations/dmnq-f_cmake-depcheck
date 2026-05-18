@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/dmnq-f/cmake-depcheck/compare/v3.0.0...v3.0.1) (2026-05-18)
+
+
+### Bug Fixes
+
+* Correct line numbers and PR edits for SHA-pinned variable deps ([300be34](https://github.com/dmnq-f/cmake-depcheck/commit/300be3454ea33dbf89050994facc763f63947cf9))
+
 ## [3.0.0](https://github.com/dmnq-f/cmake-depcheck/compare/v2.0.1...v3.0.0) (2026-05-18)
 
 
