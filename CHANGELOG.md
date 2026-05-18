@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.2](https://github.com/dmnq-f/cmake-depcheck/compare/v3.0.1...v3.0.2) (2026-05-18)
+
+
+### Bug Fixes
+
+* Preserve characters between value and # in PR edit oldText ([a093286](https://github.com/dmnq-f/cmake-depcheck/commit/a093286c5a533d202d6c58c725ce32354e275f19))
+
 ## [3.0.1](https://github.com/dmnq-f/cmake-depcheck/compare/v3.0.0...v3.0.1) (2026-05-18)
 
 
