@@ -459,7 +459,7 @@ describe('checkForUpdates', () => {
       expect(result.resolvedTag).toBe('v12.1.0');
     });
 
-    it('also matches the tag-object SHA of an annotated tag (bagel-style pin)', async () => {
+    it('also matches the tag-object SHA of an annotated tag', async () => {
       const COMMIT_SHA = 'commit00000000000000000000000000000000000';
       mockedFetchRemoteTags.mockResolvedValue([annotated('v12.1.0', PINNED_SHA, COMMIT_SHA)]);
       const [result] = await checkForUpdates([makeSha()]);

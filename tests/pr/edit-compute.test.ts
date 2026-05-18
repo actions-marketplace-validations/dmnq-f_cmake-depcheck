@@ -349,13 +349,13 @@ describe('computeEdit', () => {
       it('targets the set() line and uses the VariableInfo hint', () => {
         const dep = makeDep({
           gitTag: PINNED_SHA,
-          gitTagRaw: '${BAGEL_HARFBUZZ_GIT_COMMIT}',
+          gitTagRaw: '${HARFBUZZ_GIT_COMMIT}',
           gitTagIsSha: true,
           location: { file: '/proj/src/foundation/CMakeLists.txt', startLine: 41, endLine: 45 },
         });
         const vars = new Map<string, VariableInfo>([
           [
-            'BAGEL_HARFBUZZ_GIT_COMMIT',
+            'HARFBUZZ_GIT_COMMIT',
             {
               value: PINNED_SHA,
               file: '/proj/cmake/ThirdPartyVersions.cmake',
