@@ -115,8 +115,11 @@ function extractSetCalls(content: string, vars: Map<string, VariableInfo>, fileP
       value = resolved;
     }
 
-    const line = lineNumberAt(content, match.index);
-    const setEndLine = lineNumberAt(content, closeIdx);
+    // match.index / closeIdx are positions in `cleaned`, which has different
+    // byte offsets within commented lines than `content`. lineNumberAt must
+    // be called against the same string the index came from.
+    const line = lineNumberAt(cleaned, match.index);
+    const setEndLine = lineNumberAt(cleaned, closeIdx);
     const trailing = trailingCommentOnLineContaining(content, tokens[1], line, setEndLine);
     const info: VariableInfo = { value, file: filePath, line };
     if (trailing) {
@@ -137,11 +140,12 @@ function detectProjectCalls(
   vars: Map<string, VariableInfo>,
 ): void {
   const cleaned = stripComments(content);
-  if (/\bproject\s*\(/i.test(cleaned)) {
+  const projectIdx = cleaned.search(/\bproject\s*\(/i);
+  if (projectIdx !== -1) {
     vars.set('PROJECT_SOURCE_DIR', {
       value: currentSourceDir,
       file: filePath,
-      line: lineNumberAt(content, cleaned.search(/\bproject\s*\(/i)),
+      line: lineNumberAt(cleaned, projectIdx),
     });
   }
 }
@@ -218,7 +222,7 @@ export function resolveChain(entryFile: string): ChainResult {
 
       const kind = match[1].toLowerCase();
       let arg = tokens[0];
-      const line = lineNumberAt(content, match.index);
+      const line = lineNumberAt(cleaned, match.index);
 
       // Try to resolve variables in the argument
       if (arg.includes('${') || arg.includes('$<')) {

@@ -28664,8 +28664,11 @@ function extractSetCalls(content, vars, filePath) {
         if (resolved !== null) {
             value = resolved;
         }
-        const line = lineNumberAt(content, match.index);
-        const setEndLine = lineNumberAt(content, closeIdx);
+        // match.index / closeIdx are positions in `cleaned`, which has different
+        // byte offsets within commented lines than `content`. lineNumberAt must
+        // be called against the same string the index came from.
+        const line = lineNumberAt(cleaned, match.index);
+        const setEndLine = lineNumberAt(cleaned, closeIdx);
         const trailing = trailingCommentOnLineContaining(content, tokens[1], line, setEndLine);
         const info = { value, file: filePath, line };
         if (trailing) {
@@ -28680,11 +28683,12 @@ function extractSetCalls(content, vars, filePath) {
  */
 function detectProjectCalls(content, currentSourceDir, filePath, vars) {
     const cleaned = stripComments(content);
-    if (/\bproject\s*\(/i.test(cleaned)) {
+    const projectIdx = cleaned.search(/\bproject\s*\(/i);
+    if (projectIdx !== -1) {
         vars.set('PROJECT_SOURCE_DIR', {
             value: currentSourceDir,
             file: filePath,
-            line: lineNumberAt(content, cleaned.search(/\bproject\s*\(/i)),
+            line: lineNumberAt(cleaned, projectIdx),
         });
     }
 }
@@ -28749,7 +28753,7 @@ function resolveChain(entryFile) {
                 continue;
             const kind = match[1].toLowerCase();
             let arg = tokens[0];
-            const line = lineNumberAt(content, match.index);
+            const line = lineNumberAt(cleaned, match.index);
             // Try to resolve variables in the argument
             if (arg.includes('${') || arg.includes('$<')) {
                 if (arg.includes('$<')) {
@@ -37305,7 +37309,56 @@ function computeEdit(result, vars) {
     if (result.status !== 'update-available')
         return null;
     const dep = result.dep;
-    // Case 1: Git dep with variable-resolved GIT_TAG
+    // Update the version-shaped token inside a trailing comment fragment.
+    // Returns the same string when no version-shaped token exists.
+    function rewriteCommentVersion(rawFragment) {
+        if (!rawFragment)
+            return rawFragment;
+        const oldToken = findVersionTokenInComment(rawFragment);
+        if (!oldToken || !result.latestVersion)
+            return rawFragment;
+        const newToken = alignPrefix(oldToken, result.latestVersion);
+        return rawFragment.replace(oldToken, newToken);
+    }
+    // Case 2a: SHA-resolved git dep — rewrite SHA + any version token in the
+    // trailing comment. Two sub-cases by where the SHA literally lives:
+    //   - Variable-resolved (`GIT_TAG ${VAR}` consuming a `set(VAR "<sha>")`):
+    //     edit targets the `set()` line, uses the VariableInfo's hint comment.
+    //   - Inline (`GIT_TAG <sha>`): edit targets the GIT_TAG line, uses the
+    //     dep's gitTagCommentRaw.
+    if (dep.sourceType === 'git' &&
+        dep.gitTagIsSha &&
+        dep.gitTag &&
+        result.versionSource === 'sha' &&
+        result.latestSha) {
+        if (dep.gitTagRaw?.includes('${')) {
+            const varName = extractVarName(dep.gitTagRaw);
+            if (!varName || !vars)
+                return null;
+            const info = vars.get(varName);
+            if (!info)
+                return null;
+            const oldFragment = info.hintRaw ?? '';
+            const newFragment = rewriteCommentVersion(oldFragment);
+            return {
+                file: info.file,
+                line: info.line,
+                endLine: info.line,
+                oldText: info.value + oldFragment,
+                newText: result.latestSha + newFragment,
+            };
+        }
+        const oldFragment = dep.gitTagCommentRaw ?? '';
+        const newFragment = rewriteCommentVersion(oldFragment);
+        return {
+            file: dep.location.file,
+            line: dep.location.startLine,
+            endLine: dep.location.endLine,
+            oldText: dep.gitTag + oldFragment,
+            newText: result.latestSha + newFragment,
+        };
+    }
+    // Case 1: Git dep with variable-resolved GIT_TAG (non-SHA — SHA case handled in 2a)
     if (dep.sourceType === 'git' && dep.gitTagRaw?.includes('${')) {
         const varName = extractVarName(dep.gitTagRaw);
         if (!varName || !vars)
@@ -37322,29 +37375,6 @@ function computeEdit(result, vars) {
             endLine: info.line,
             oldText: info.value,
             newText: newVersion,
-        };
-    }
-    // Case 2a: SHA-resolved git dep — rewrite SHA and any version token in the trailing comment
-    if (dep.sourceType === 'git' &&
-        dep.gitTagIsSha &&
-        dep.gitTag &&
-        result.versionSource === 'sha' &&
-        result.latestSha) {
-        const oldFragment = dep.gitTagCommentRaw ?? '';
-        let newFragment = oldFragment;
-        if (oldFragment) {
-            const oldToken = findVersionTokenInComment(oldFragment);
-            if (oldToken && result.latestVersion) {
-                const newToken = alignPrefix(oldToken, result.latestVersion);
-                newFragment = oldFragment.replace(oldToken, newToken);
-            }
-        }
-        return {
-            file: dep.location.file,
-            line: dep.location.startLine,
-            endLine: dep.location.endLine,
-            oldText: dep.gitTag + oldFragment,
-            newText: result.latestSha + newFragment,
         };
     }
     // Case 2: Git dep with literal GIT_TAG (non-SHA — SHA-resolved deps are handled in case 2a)

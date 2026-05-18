@@ -344,5 +344,84 @@ describe('computeEdit', () => {
       const result = makeShaResult({ latestSha: undefined });
       expect(computeEdit(result)).toBeNull();
     });
+
+    describe('SHA pinned via variable (set() reference)', () => {
+      it('targets the set() line and uses the VariableInfo hint', () => {
+        const dep = makeDep({
+          gitTag: PINNED_SHA,
+          gitTagRaw: '${BAGEL_HARFBUZZ_GIT_COMMIT}',
+          gitTagIsSha: true,
+          location: { file: '/proj/src/foundation/CMakeLists.txt', startLine: 41, endLine: 45 },
+        });
+        const vars = new Map<string, VariableInfo>([
+          [
+            'BAGEL_HARFBUZZ_GIT_COMMIT',
+            {
+              value: PINNED_SHA,
+              file: '/proj/cmake/ThirdPartyVersions.cmake',
+              line: 16,
+              hint: '14.1.0',
+              hintRaw: '  # 14.1.0',
+            },
+          ],
+        ]);
+        const result = makeShaResult({
+          resolvedTag: '14.1.0',
+          latestVersion: '14.2.0',
+        });
+        result.dep = dep;
+        const edit = computeEdit(result, vars);
+        expect(edit).toEqual({
+          file: '/proj/cmake/ThirdPartyVersions.cmake',
+          line: 16,
+          endLine: 16,
+          oldText: `${PINNED_SHA}  # 14.1.0`,
+          newText: `${NEW_SHA}  # 14.2.0`,
+        });
+      });
+
+      it('targets the set() line with no comment when VariableInfo has no hint', () => {
+        const dep = makeDep({
+          gitTag: PINNED_SHA,
+          gitTagRaw: '${MY_COMMIT}',
+          gitTagIsSha: true,
+        });
+        const vars = new Map<string, VariableInfo>([
+          ['MY_COMMIT', { value: PINNED_SHA, file: '/proj/versions.cmake', line: 4 }],
+        ]);
+        const result = makeShaResult();
+        result.dep = dep;
+        const edit = computeEdit(result, vars);
+        expect(edit).toEqual({
+          file: '/proj/versions.cmake',
+          line: 4,
+          endLine: 4,
+          oldText: PINNED_SHA,
+          newText: NEW_SHA,
+        });
+      });
+
+      it('returns null when vars map is missing for variable-resolved SHA dep', () => {
+        const dep = makeDep({
+          gitTag: PINNED_SHA,
+          gitTagRaw: '${MY_COMMIT}',
+          gitTagIsSha: true,
+        });
+        const result = makeShaResult();
+        result.dep = dep;
+        expect(computeEdit(result)).toBeNull();
+      });
+
+      it('returns null when the variable is not in the vars map', () => {
+        const dep = makeDep({
+          gitTag: PINNED_SHA,
+          gitTagRaw: '${UNKNOWN}',
+          gitTagIsSha: true,
+        });
+        const result = makeShaResult();
+        result.dep = dep;
+        expect(computeEdit(result, new Map<string, VariableInfo>())).toBeNull();
+      });
+    });
   });
 });

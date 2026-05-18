@@ -205,5 +205,15 @@ describe('chain-resolver', () => {
       expect(fmt?.gitTagComment).toBe('14.1.0');
       expect(fmt?.gitTagCommentRaw).toBe('  # 14.1.0');
     });
+
+    it('reports correct set() line number when comment-only lines precede it', () => {
+      const { result } = deps('chain-sha-hint-commented-header');
+      const fmt = result.vars.get('FMT_COMMIT');
+      // The set() call is on line 7 of versions.cmake (5 lines of `#` header + blank line).
+      expect(fmt?.line).toBe(7);
+      expect(fmt?.file).toMatch(/versions\.cmake$/);
+      expect(fmt?.hint).toBe('12.1.0');
+      expect(fmt?.hintRaw).toBe('  # 12.1.0');
+    });
   });
 });
