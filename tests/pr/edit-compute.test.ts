@@ -1,8 +1,14 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { computeEdit } from '../../src/pr/edit-compute.js';
+import { parseCMakeContent } from '../../src/parser/cmake-parser.js';
+import { resolveChain, resolveDependencyVariables } from '../../src/scanner/chain-resolver.js';
 import type { UpdateCheckResult } from '../../src/checker/types.js';
 import type { FetchContentDependency } from '../../src/parser/types.js';
 import type { VariableInfo } from '../../src/scanner/chain-resolver.js';
+
+const FIXTURES = path.join(__dirname, '..', 'fixtures');
 
 function makeDep(overrides: Partial<FetchContentDependency> = {}): FetchContentDependency {
   return {
@@ -361,7 +367,7 @@ describe('computeEdit', () => {
               file: '/proj/cmake/ThirdPartyVersions.cmake',
               line: 16,
               hint: '14.1.0',
-              hintRaw: '  # 14.1.0',
+              hintRaw: '")  # 14.1.0',
             },
           ],
         ]);
@@ -375,8 +381,8 @@ describe('computeEdit', () => {
           file: '/proj/cmake/ThirdPartyVersions.cmake',
           line: 16,
           endLine: 16,
-          oldText: `${PINNED_SHA}  # 14.1.0`,
-          newText: `${NEW_SHA}  # 14.2.0`,
+          oldText: `${PINNED_SHA}")  # 14.1.0`,
+          newText: `${NEW_SHA}")  # 14.2.0`,
         });
       });
 
@@ -422,6 +428,90 @@ describe('computeEdit', () => {
         result.dep = dep;
         expect(computeEdit(result, new Map<string, VariableInfo>())).toBeNull();
       });
+    });
+  });
+
+  /**
+   * Round-trip safety: scan a real fixture, synthesise an update-available
+   * result against it, compute the edit, and assert that `oldText` is an
+   * actual substring of the source file at `edit.line`. This catches the
+   * whole class of bug where producer and consumer agree on a wrong format
+   * (e.g. `hintRaw` missing the `")` between value and `#`).
+   *
+   * The synthesised result skips the real version-checker so we don't depend
+   * on network and can pin both sides of the substitution deterministically.
+   */
+  describe('round-trip substring safety', () => {
+    function scanFixture(name: string) {
+      const entry = path.join(FIXTURES, name, 'CMakeLists.txt');
+      const chain = resolveChain(entry);
+      const deps: FetchContentDependency[] = [];
+      for (const f of chain.files) {
+        deps.push(...parseCMakeContent(fs.readFileSync(f, 'utf-8'), f));
+      }
+      resolveDependencyVariables(deps, chain.vars);
+      return { deps, vars: chain.vars };
+    }
+
+    function assertOldTextInFile(edit: ReturnType<typeof computeEdit>) {
+      expect(edit).not.toBeNull();
+      if (!edit) return;
+      const source = fs.readFileSync(edit.file, 'utf-8');
+      const lines = source.split('\n');
+      const slice = lines.slice(edit.line - 1, edit.endLine).join('\n');
+      expect(slice).toContain(edit.oldText);
+    }
+
+    it('SHA pinned via set() variable: oldText is a substring of the source line', () => {
+      const { deps, vars } = scanFixture('chain-sha-hint');
+      const fmt = deps.find((d) => d.name === 'fmt')!;
+      const edit = computeEdit(
+        {
+          dep: fmt,
+          status: 'update-available',
+          versionSource: 'sha',
+          resolvedTag: '12.1.0',
+          latestVersion: '12.2.0',
+          latestSha: 'b'.repeat(40),
+          updateType: 'minor',
+        },
+        vars,
+      );
+      assertOldTextInFile(edit);
+    });
+
+    it('inline SHA with trailing comment: oldText is a substring of the source line', () => {
+      const { deps, vars } = scanFixture('commit-sha');
+      const fmt = deps.find((d) => d.name === 'fmt')!;
+      const edit = computeEdit(
+        {
+          dep: fmt,
+          status: 'update-available',
+          versionSource: 'sha',
+          resolvedTag: '12.1.0',
+          latestVersion: '12.2.0',
+          latestSha: 'b'.repeat(40),
+          updateType: 'minor',
+        },
+        vars,
+      );
+      assertOldTextInFile(edit);
+    });
+
+    it('literal GIT_TAG: oldText is a substring of the source line', () => {
+      const { deps, vars } = scanFixture('basic-git');
+      const fmt = deps.find((d) => d.name === 'fmt')!;
+      const edit = computeEdit(
+        {
+          dep: fmt,
+          status: 'update-available',
+          versionSource: 'git-tag',
+          latestVersion: '99.0.0',
+          updateType: 'major',
+        },
+        vars,
+      );
+      assertOldTextInFile(edit);
     });
   });
 });

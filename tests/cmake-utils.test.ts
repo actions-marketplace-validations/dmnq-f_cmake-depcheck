@@ -36,10 +36,15 @@ describe('trailingCommentOnLineContaining', () => {
     expect(result).toEqual({ comment: '14.1.0', raw: '  # 14.1.0' });
   });
 
-  it('attributes the trailing comment regardless of intervening tokens on the same line', () => {
+  it('captures quotes and parens between needle and # for set()-style lines', () => {
     const content = 'set(VAR "abc123")  # 14.1.0\n';
     const result = trailingCommentOnLineContaining(content, 'abc123', 1, 1);
-    expect(result).toEqual({ comment: '14.1.0', raw: '  # 14.1.0' });
+    expect(result).toEqual({ comment: '14.1.0', raw: '")  # 14.1.0' });
+  });
+
+  it('returns undefined when # only appears before the needle', () => {
+    const content = 'set(X "#hash") set(Y "abc123")\n';
+    expect(trailingCommentOnLineContaining(content, 'abc123', 1, 1)).toBeUndefined();
   });
 
   it('captures comment containing spaces and a version prefix', () => {

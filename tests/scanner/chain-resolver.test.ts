@@ -179,7 +179,7 @@ describe('chain-resolver', () => {
       const spdlog = result.vars.get('SPDLOG_COMMIT');
 
       expect(fmt?.hint).toBe('12.1.0');
-      expect(fmt?.hintRaw).toBe('  # 12.1.0');
+      expect(fmt?.hintRaw).toBe('")  # 12.1.0');
       expect(spdlog?.hint).toBeUndefined();
       expect(spdlog?.hintRaw).toBeUndefined();
     });
@@ -192,7 +192,7 @@ describe('chain-resolver', () => {
       expect(fmt?.gitTag).toBe('407c905e45ad75fc29bf0f9bb7c5c2fd3475976f');
       expect(fmt?.gitTagIsSha).toBe(true);
       expect(fmt?.gitTagComment).toBe('12.1.0');
-      expect(fmt?.gitTagCommentRaw).toBe('  # 12.1.0');
+      expect(fmt?.gitTagCommentRaw).toBe('")  # 12.1.0');
 
       expect(spdlog?.gitTag).toBe('79524ddd08a4ec981b7fea76afd08ee05f83755d');
       expect(spdlog?.gitTagComment).toBeUndefined();
@@ -213,7 +213,7 @@ describe('chain-resolver', () => {
       expect(fmt?.line).toBe(7);
       expect(fmt?.file).toMatch(/versions\.cmake$/);
       expect(fmt?.hint).toBe('12.1.0');
-      expect(fmt?.hintRaw).toBe('  # 12.1.0');
+      expect(fmt?.hintRaw).toBe('")  # 12.1.0');
     });
   });
 });

@@ -28414,28 +28414,30 @@ function stripComments(text) {
  * `needle`, and extract its trailing comment.
  *
  * Returns `{ comment, raw }` where `comment` is the body after `#` (trimmed)
- * and `raw` is the full tail from the whitespace immediately before `#`
- * through end of line (trailing whitespace trimmed). `raw` is anchored to the
- * line's `#` — any non-whitespace text between the needle and `#` (e.g. the
- * closing `")` of a `set()` call) is not included.
+ * and `raw` is the verbatim substring from immediately after `needle` through
+ * end of line (trailing whitespace trimmed). `raw` therefore preserves
+ * anything between the value and the `#` — for a `set(X "<sha>") # 14.1.0`
+ * line searched with the SHA as needle, `raw` is `")  # 14.1.0`, not just
+ * `  # 14.1.0`. This lets callers concatenate `needle + raw` and substring-
+ * match the original line exactly.
  *
- * Returns `undefined` when no line within the range contains `needle` or the
- * matching line has no `#` comment. Lines are 1-based; `endLine` is inclusive.
+ * Returns `undefined` when no line within the range contains `needle`, or
+ * when the matching line has no `#` comment after the needle. Lines are
+ * 1-based; `endLine` is inclusive.
  */
 function trailingCommentOnLineContaining(content, needle, startLine, endLine) {
     const lines = content.split('\n');
     const last = Math.min(endLine, lines.length);
     for (let i = Math.max(1, startLine) - 1; i < last; i++) {
         const line = lines[i];
-        if (line.indexOf(needle) === -1)
+        const needleIdx = line.indexOf(needle);
+        if (needleIdx === -1)
             continue;
-        const hashIdx = line.indexOf('#');
+        const afterNeedle = needleIdx + needle.length;
+        const hashIdx = line.indexOf('#', afterNeedle);
         if (hashIdx === -1)
             return undefined;
-        const beforeHash = line.substring(0, hashIdx);
-        const wsMatch = beforeHash.match(/\s+$/);
-        const wsStart = wsMatch ? hashIdx - wsMatch[0].length : hashIdx;
-        const raw = line.substring(wsStart).replace(/\s+$/, '');
+        const raw = line.substring(afterNeedle).replace(/\s+$/, '');
         const comment = line.substring(hashIdx + 1).trim();
         return { comment, raw };
     }
