@@ -152,6 +152,39 @@ describe('updateExistingPr', () => {
     expect(newBody).toContain('<!-- cmake-depcheck:edit:v12.1.0 -->');
   });
 
+  it('shows abbreviated SHA with version for SHA-pinned deps in the refreshed body', async () => {
+    const currentSha = '769abd9ad368f63d3fcdf5e69fc99a907e4da6ad';
+    const prevSha = 'a'.repeat(40);
+    const newSha = '77a832110d40b0179636f5be8f8781f8299d7e50';
+    const content = Buffer.from(`GIT_TAG ${prevSha}\n`).toString('base64');
+    octokit.rest.repos.getContent.mockResolvedValue({
+      data: { content, sha: 'branch-file-sha' },
+    });
+    octokit.rest.repos.createOrUpdateFileContents.mockResolvedValue({});
+    octokit.rest.pulls.update.mockResolvedValue({});
+
+    const plan = makePlan({
+      edit: { file: 'CMakeLists.txt', line: 1, endLine: 5, oldText: currentSha, newText: newSha },
+      result: {
+        dep: makeDep({ gitTag: currentSha, gitTagIsSha: true }),
+        status: 'update-available',
+        versionSource: 'sha',
+        resolvedTag: '14.2.0',
+        latestVersion: '14.2.1',
+        latestSha: newSha,
+        updateType: 'patch',
+      } as UpdateCheckResult,
+      previousEditText: prevSha,
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateExistingPr(octokit as any, ctx, plan);
+
+    const newBody = octokit.rest.pulls.update.mock.calls[0][0].body as string;
+    expect(newBody).toContain('| **Current** | `769abd9a (14.2.0)` |');
+    expect(newBody).toContain('| **Latest** | `77a83211 (14.2.1)` |');
+  });
+
   it('searches for previousEditText, not edit.oldText', async () => {
     // File on PR branch has v11.0.0 (from previous update),
     // but edit.oldText is v10.2.1 (current on main).

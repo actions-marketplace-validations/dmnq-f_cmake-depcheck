@@ -180,6 +180,30 @@ describe('cli', () => {
       expect(output).toMatch(/major update/);
     });
 
+    it('shows abbreviated SHA with version for SHA-pinned deps', async () => {
+      const newSha = '77a832110d40b0179636f5be8f8781f8299d7e50';
+      mockedCheckForUpdates.mockImplementation(async (deps) =>
+        deps.map(
+          (dep): UpdateCheckResult => ({
+            dep,
+            status: 'update-available',
+            versionSource: 'sha',
+            resolvedTag: '12.1.0',
+            latestVersion: '12.2.0',
+            latestSha: newSha,
+            updateType: 'minor',
+          }),
+        ),
+      );
+
+      await runScan('--path', path.join(FIXTURES, 'commit-sha', 'CMakeLists.txt'));
+      const output = logLines.join('\n');
+      // fmt's pinned SHA 407c905e… abbreviates and gains the resolved version
+      expect(output).toMatch(/407c905e \(12\.1\.0\)/);
+      // Latest column shows the new SHA abbreviated alongside the new version
+      expect(output).toMatch(/77a83211 \(12\.2\.0\)/);
+    });
+
     it('prints check-failed errors to stderr', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
         return deps.map(

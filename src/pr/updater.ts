@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import type { getOctokit } from '@actions/github';
 import type { UpdateCheckResult } from '../checker/types.js';
+import { currentVersionField, latestVersionField } from '../version-display.js';
 import type { FileEdit } from './edit-compute.js';
 import type { ExistingPr } from './cleanup.js';
 import { buildPrBody, updateTypeLabel, type GitHubContext, type PrResult } from './github.js';
@@ -94,7 +95,6 @@ export async function updateExistingPr(
   }
 
   // 4. Rebuild PR body with refreshed metadata, release notes, and new edit marker
-  const currentVersion = result.dep.gitTag ?? result.resolvedVersion ?? 'unknown';
   const repoUrl = result.dep.gitRepository ?? result.dep.url ?? '';
 
   let releaseNotesSection = '';
@@ -115,8 +115,8 @@ export async function updateExistingPr(
 
   const body = buildPrBody(
     name,
-    currentVersion,
-    version,
+    currentVersionField(result),
+    latestVersionField(result),
     updateTypeLabel(result.updateType),
     repoUrl,
     edit.file,

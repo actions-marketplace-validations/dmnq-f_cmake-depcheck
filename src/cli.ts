@@ -9,7 +9,7 @@ import { UpdateCheckResult } from './checker/types.js';
 import { formatJsonOutput } from './formatter/index.js';
 import { scan } from './scan.js';
 import { parseUpdateTypes } from './update-types.js';
-import { SHA_PATTERN } from './constants.js';
+import { currentVersionField, latestVersionField } from './version-display.js';
 
 const STATUS_LABELS: Record<UpdateCheckResult['status'], string> = {
   'up-to-date': 'up to date',
@@ -29,16 +29,13 @@ function statusLabel(result: UpdateCheckResult): string {
 }
 
 function currentLabel(dep: FetchContentDependency, result?: UpdateCheckResult): string {
-  if (result?.resolvedVersion) {
-    return SHA_PATTERN.test(result.resolvedVersion)
-      ? result.resolvedVersion.slice(0, 8)
-      : result.resolvedVersion;
-  }
+  const fallback = dep.sourceType === 'git' ? (dep.gitTag ?? '') : (dep.url ?? '');
   if (result) {
     if (result.status === 'unsupported') return '(url)';
     if (result.status === 'unpinned') return '(none)';
+    return currentVersionField(result, fallback);
   }
-  return dep.sourceType === 'git' ? (dep.gitTag ?? '') : (dep.url ?? '');
+  return fallback;
 }
 
 function printResults(
@@ -85,7 +82,7 @@ function printResults(
         return {
           name: dep.name,
           current: currentLabel(dep, result),
-          latest: result.latestVersion ?? '\u2014',
+          latest: latestVersionField(result, '\u2014'),
           status: statusLabel(result),
           location: `${relFile}:${dep.location.startLine}`,
           sortKey: STATUS_ORDER[result.status],

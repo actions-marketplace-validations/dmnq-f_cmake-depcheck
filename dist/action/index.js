@@ -32336,6 +32336,42 @@ async function scan(options) {
     };
 }
 
+const SHA_SHORT_LEN = 8;
+/** Abbreviate a commit SHA to its display length. */
+function shortSha(sha) {
+    return sha.slice(0, SHA_SHORT_LEN);
+}
+/**
+ * Display string for a dependency's currently pinned version, shared by the PR
+ * body, the Action job summary, and the CLI table. SHA-pinned git deps that
+ * reverse-resolved to a tag show the abbreviated pinned SHA with the
+ * human-readable version in parentheses (e.g. `769abd9a (14.2.0)`); URL deps
+ * show the resolved version, abbreviated when it is itself a commit SHA;
+ * tag-pinned deps show the tag alone.
+ */
+function currentVersionField(result, fallback = 'unknown') {
+    const { dep, resolvedTag, resolvedVersion } = result;
+    if (dep.gitTagIsSha && dep.gitTag && resolvedTag) {
+        return `${shortSha(dep.gitTag)} (${resolvedTag})`;
+    }
+    if (resolvedVersion) {
+        return SHA_PATTERN.test(resolvedVersion) ? shortSha(resolvedVersion) : resolvedVersion;
+    }
+    return dep.gitTag ?? fallback;
+}
+/**
+ * Display string for a dependency's latest available version. SHA-pinned deps
+ * show the abbreviated new commit SHA with the new version in parentheses
+ * (e.g. `77a83211 (14.2.1)`); others show the version alone.
+ */
+function latestVersionField(result, fallback = 'unknown') {
+    const { dep, latestVersion, latestSha } = result;
+    if (dep.gitTagIsSha && latestSha && latestVersion) {
+        return `${shortSha(latestSha)} (${latestVersion})`;
+    }
+    return latestVersion ?? fallback;
+}
+
 class Context {
     /**
      * Hydrate the context from the environment
@@ -37655,7 +37691,6 @@ async function createUpdatePr(octokit, ctx, dep, edit) {
         branch,
     });
     // 7. Build PR body and open PR
-    const currentVersion = dep.dep.gitTag ?? dep.resolvedVersion ?? 'unknown';
     const repoUrl = dep.dep.gitRepository ?? dep.dep.url ?? '';
     let releaseNotesSection = '';
     const currentTag = dep.dep.gitTag ?? dep.resolvedVersion ?? '';
@@ -37667,7 +37702,7 @@ async function createUpdatePr(octokit, ctx, dep, edit) {
             // Release notes are best-effort — don't fail the PR
         }
     }
-    const body = buildPrBody(name, currentVersion, version, updateTypeLabel(dep.updateType), repoUrl, edit.file, edit.newText, releaseNotesSection);
+    const body = buildPrBody(name, currentVersionField(dep), latestVersionField(dep), updateTypeLabel(dep.updateType), repoUrl, edit.file, edit.newText, releaseNotesSection);
     const { data: pr } = await octokit.rest.pulls.create({
         owner: ctx.owner,
         repo: ctx.repo,
@@ -37828,7 +37863,6 @@ async function updateExistingPr(octokit, ctx, plan) {
         return { name, action: 'error', error: `Failed to commit update: ${message}` };
     }
     // 4. Rebuild PR body with refreshed metadata, release notes, and new edit marker
-    const currentVersion = result.dep.gitTag ?? result.resolvedVersion ?? 'unknown';
     const repoUrl = result.dep.gitRepository ?? result.dep.url ?? '';
     let releaseNotesSection = '';
     const currentTag = result.dep.gitTag ?? result.resolvedVersion ?? '';
@@ -37840,7 +37874,7 @@ async function updateExistingPr(octokit, ctx, plan) {
             // Release notes are best-effort
         }
     }
-    const body = buildPrBody(name, currentVersion, version, updateTypeLabel(result.updateType), repoUrl, edit.file, edit.newText, releaseNotesSection);
+    const body = buildPrBody(name, currentVersionField(result), latestVersionField(result), updateTypeLabel(result.updateType), repoUrl, edit.file, edit.newText, releaseNotesSection);
     // 5. Update PR title and body
     await octokit.rest.pulls.update({
         owner: ctx.owner,
@@ -38081,8 +38115,8 @@ async function run() {
             const dep = r.dep;
             rows.push({
                 name: dep.name,
-                current: dep.gitTag ?? r.resolvedVersion ?? '—',
-                latest: r.latestVersion ?? '—',
+                current: currentVersionField(r, '—'),
+                latest: latestVersionField(r, '—'),
                 status: statusLabel(r.status),
                 location: `${path.relative(process.cwd(), dep.location.file)}:${dep.location.startLine}`,
             });

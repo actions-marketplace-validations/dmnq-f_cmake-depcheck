@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { scan } from './scan.js';
 import { UpdateCheckResult } from './checker/types.js';
 import { parseUpdateTypes } from './update-types.js';
+import { currentVersionField, latestVersionField } from './version-display.js';
 import { createPullRequests, type PrResult } from './pr/index.js';
 
 function parseMultiLineInput(raw: string): string[] {
@@ -103,8 +104,8 @@ export async function run(): Promise<void> {
       const dep = r.dep;
       rows.push({
         name: dep.name,
-        current: dep.gitTag ?? r.resolvedVersion ?? '—',
-        latest: r.latestVersion ?? '—',
+        current: currentVersionField(r, '—'),
+        latest: latestVersionField(r, '—'),
         status: statusLabel(r.status),
         location: `${path.relative(process.cwd(), dep.location.file)}:${dep.location.startLine}`,
       });

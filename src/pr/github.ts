@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { getOctokit } from '@actions/github';
 import type { UpdateCheckResult } from '../checker/types.js';
+import { currentVersionField, latestVersionField } from '../version-display.js';
 import type { FileEdit } from './edit-compute.js';
 import { buildEditMarker } from './edit-marker.js';
 import { fetchReleaseNotes } from './release-notes.js';
@@ -213,7 +214,6 @@ export async function createUpdatePr(
   });
 
   // 7. Build PR body and open PR
-  const currentVersion = dep.dep.gitTag ?? dep.resolvedVersion ?? 'unknown';
   const repoUrl = dep.dep.gitRepository ?? dep.dep.url ?? '';
 
   let releaseNotesSection = '';
@@ -234,8 +234,8 @@ export async function createUpdatePr(
 
   const body = buildPrBody(
     name,
-    currentVersion,
-    version,
+    currentVersionField(dep),
+    latestVersionField(dep),
     updateTypeLabel(dep.updateType),
     repoUrl,
     edit.file,

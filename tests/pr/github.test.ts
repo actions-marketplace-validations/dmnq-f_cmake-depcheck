@@ -204,6 +204,49 @@ describe('createUpdatePr', () => {
     expect(body).toContain('<!-- cmake-depcheck:edit:v12.1.0 -->');
   });
 
+  it('shows abbreviated SHA with version for SHA-pinned deps in the PR body', async () => {
+    octokit.rest.git.getRef
+      .mockRejectedValueOnce({ status: 404 })
+      .mockResolvedValueOnce({ data: { object: { sha: 'base-sha' } } });
+
+    const currentSha = '769abd9ad368f63d3fcdf5e69fc99a907e4da6ad';
+    const newSha = '77a832110d40b0179636f5be8f8781f8299d7e50';
+    const content = Buffer.from(`GIT_TAG ${currentSha}\n`).toString('base64');
+    octokit.rest.repos.getContent.mockResolvedValue({
+      data: { content, sha: 'file-sha' },
+    });
+    octokit.rest.git.createRef.mockResolvedValue({});
+    octokit.rest.repos.createOrUpdateFileContents.mockResolvedValue({});
+    octokit.rest.issues.addLabels.mockResolvedValue({});
+    octokit.rest.pulls.create.mockResolvedValue({ data: { number: 1, html_url: 'url' } });
+
+    const result = makeUpdateResult({
+      dep: makeDep({ gitTag: currentSha, gitTagIsSha: true }),
+      versionSource: 'sha',
+      resolvedTag: '14.2.0',
+      latestVersion: '14.2.1',
+      latestSha: newSha,
+    });
+    const shaEdit: FileEdit = {
+      file: 'CMakeLists.txt',
+      line: 1,
+      endLine: 1,
+      oldText: currentSha,
+      newText: newSha,
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await createUpdatePr(octokit as any, ctx, result, shaEdit);
+
+    const body = octokit.rest.pulls.create.mock.calls[0][0].body as string;
+    expect(body).toContain('| **Current** | `769abd9a (14.2.0)` |');
+    expect(body).toContain('| **Latest** | `77a83211 (14.2.1)` |');
+    // Title still uses the plain version, not the combined field
+    expect(octokit.rest.pulls.create.mock.calls[0][0].title).toBe(
+      'chore(deps): update fmt to 14.2.1',
+    );
+  });
+
   it('finds GIT_TAG on a line after startLine within the block', async () => {
     octokit.rest.git.getRef
       .mockRejectedValueOnce({ status: 404 })

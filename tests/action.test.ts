@@ -389,6 +389,38 @@ describe('action', () => {
       expect(mockSummaryWrite).toHaveBeenCalled();
     });
 
+    it('shows abbreviated SHA with version for SHA-pinned deps', async () => {
+      const dep = makeDep({
+        name: 'harfbuzz',
+        gitTag: '769abd9ad368f63d3fcdf5e69fc99a907e4da6ad',
+        gitTagIsSha: true,
+      });
+      const results: UpdateCheckResult[] = [
+        {
+          dep,
+          status: 'update-available',
+          versionSource: 'sha',
+          resolvedTag: '14.2.0',
+          latestVersion: '14.2.1',
+          latestSha: '77a832110d40b0179636f5be8f8781f8299d7e50',
+          updateType: 'patch',
+        },
+      ];
+      mockScan.mockResolvedValue(makeResult(results));
+      await runAction();
+
+      expect(mockSummaryAddTable).toHaveBeenCalledWith([
+        expect.any(Array),
+        [
+          'harfbuzz',
+          '769abd9a (14.2.0)',
+          '77a83211 (14.2.1)',
+          'update available',
+          'CMakeLists.txt:10',
+        ],
+      ]);
+    });
+
     it('writes scan-only summary without update info', async () => {
       const deps = [makeDep({ name: 'fmt', gitTag: 'v10.2.1' })];
       mockScan.mockResolvedValue(makeResult(undefined, deps));
