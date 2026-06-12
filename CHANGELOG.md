@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/dmnq-f/cmake-depcheck/compare/v3.0.2...v3.1.0) (2026-06-12)
+
+
+### Features
+
+* Show abbreviated SHA with version in current/latest fields ([#60](https://github.com/dmnq-f/cmake-depcheck/issues/60)) ([ce10f6f](https://github.com/dmnq-f/cmake-depcheck/commit/ce10f6faea8c84ff16c7d46fa2bfd0683ec76bde))
+
 ## [3.0.2](https://github.com/dmnq-f/cmake-depcheck/compare/v3.0.1...v3.0.2) (2026-05-18)
 
 

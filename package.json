@@ -1,6 +1,6 @@
 {
   "name": "cmake-depcheck",
-  "version": "3.0.2",
+  "version": "3.1.0",
   "description": "Check for updates to CMake FetchContent dependencies",
   "type": "module",
   "main": "dist/index.js",
