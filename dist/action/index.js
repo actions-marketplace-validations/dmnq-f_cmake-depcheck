@@ -29277,6 +29277,22 @@ function requireSemver$1 () {
 
 	const parseOptions = requireParseOptions();
 	const { compareIdentifiers } = requireIdentifiers();
+
+	const isPrereleaseIdentifier = (prerelease, identifier) => {
+	  const identifiers = identifier.split('.');
+	  if (identifiers.length > prerelease.length) {
+	    return false
+	  }
+
+	  for (let i = 0; i < identifiers.length; i++) {
+	    if (compareIdentifiers(prerelease[i], identifiers[i]) !== 0) {
+	      return false
+	    }
+	  }
+
+	  return true
+	};
+
 	class SemVer {
 	  constructor (version, options) {
 	    options = parseOptions(options);
@@ -29580,8 +29596,9 @@ function requireSemver$1 () {
 	          if (identifierBase === false) {
 	            prerelease = [identifier];
 	          }
-	          if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
-	            if (isNaN(this.prerelease[1])) {
+	          if (isPrereleaseIdentifier(this.prerelease, identifier)) {
+	            const prereleaseBase = this.prerelease[identifier.split('.').length];
+	            if (isNaN(prereleaseBase)) {
 	              this.prerelease = prerelease;
 	            }
 	          } else {
@@ -30320,6 +30337,9 @@ function requireRange () {
 	  }
 
 	  parseRange (range) {
+	    // strip build metadata so it can't bleed into the version
+	    range = range.replace(BUILDSTRIPRE, '');
+
 	    // memoize range parsing for performance.
 	    // this is a very hot path, and fully deterministic.
 	    const memoOpts =
@@ -30445,12 +30465,16 @@ function requireRange () {
 	const SemVer = requireSemver$1();
 	const {
 	  safeRe: re,
+	  src,
 	  t,
 	  comparatorTrimReplace,
 	  tildeTrimReplace,
 	  caretTrimReplace,
 	} = requireRe();
 	const { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = requireConstants();
+
+	// unbounded global build-metadata stripper used by parseRange
+	const BUILDSTRIPRE = new RegExp(src[t.BUILD], 'g');
 
 	const isNullSet = c => c.value === '<0.0.0-0';
 	const isAny = c => c.value === '';
@@ -30491,6 +30515,11 @@ function requireRange () {
 	};
 
 	const isX = id => !id || id.toLowerCase() === 'x' || id === '*';
+
+	const invalidXRangeOrder = (M, m, p) => (
+	  (isX(M) && !isX(m)) ||
+	  (isX(m) && p && !isX(p))
+	);
 
 	// ~, ~> --> * (any, kinda silly)
 	// ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0 <3.0.0-0
@@ -30588,10 +30617,10 @@ function requireRange () {
 	      if (M === '0') {
 	        if (m === '0') {
 	          ret = `>=${M}.${m}.${p
-	          }${z} <${M}.${m}.${+p + 1}-0`;
+	          } <${M}.${m}.${+p + 1}-0`;
 	        } else {
 	          ret = `>=${M}.${m}.${p
-	          }${z} <${M}.${+m + 1}.0-0`;
+	          } <${M}.${+m + 1}.0-0`;
 	        }
 	      } else {
 	        ret = `>=${M}.${m}.${p
@@ -30617,6 +30646,10 @@ function requireRange () {
 	  const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
 	  return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
 	    debug('xRange', comp, ret, gtlt, M, m, p, pr);
+	    if (invalidXRangeOrder(M, m, p)) {
+	      return comp
+	    }
+
 	    const xM = isX(M);
 	    const xm = xM || isX(m);
 	    const xp = xm || isX(p);
@@ -31503,7 +31536,7 @@ function requireSubset () {
 	        if (higher === c && higher !== gt) {
 	          return false
 	        }
-	      } else if (gt.operator === '>=' && !satisfies(gt.semver, String(c), options)) {
+	      } else if (gt.operator === '>=' && !c.test(gt.semver)) {
 	        return false
 	      }
 	    }
@@ -31521,7 +31554,7 @@ function requireSubset () {
 	        if (lower === c && lower !== lt) {
 	          return false
 	        }
-	      } else if (lt.operator === '<=' && !satisfies(lt.semver, String(c), options)) {
+	      } else if (lt.operator === '<=' && !c.test(lt.semver)) {
 	        return false
 	      }
 	    }
