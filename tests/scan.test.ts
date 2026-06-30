@@ -143,14 +143,12 @@ describe('scan()', () => {
   describe('update-type filtering', () => {
     it('filters update-available results by type', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep, i): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: `v${i + 2}.0.0`,
-            updateType: i === 0 ? 'major' : 'minor',
-          }),
-        );
+        return deps.map((dep, i): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: `v${i + 2}.0.0`,
+          updateType: i === 0 ? 'major' : 'minor',
+        }));
       });
 
       const result = await scan({
@@ -163,14 +161,12 @@ describe('scan()', () => {
 
     it('tracks filteredCount correctly', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep, i): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: `v${i + 2}.0.0`,
-            updateType: i === 0 ? 'major' : 'patch',
-          }),
-        );
+        return deps.map((dep, i): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: `v${i + 2}.0.0`,
+          updateType: i === 0 ? 'major' : 'patch',
+        }));
       });
 
       const result = await scan({
@@ -205,14 +201,12 @@ describe('scan()', () => {
 
     it('handles unknown type (undefined updateType)', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: 'v2.0.0',
-            updateType: undefined,
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: 'v2.0.0',
+          updateType: undefined,
+        }));
       });
 
       // unknown included
@@ -234,14 +228,12 @@ describe('scan()', () => {
 
     it('returns filteredCount 0 when updateTypes is undefined', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: 'v2.0.0',
-            updateType: 'major',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: 'v2.0.0',
+          updateType: 'major',
+        }));
       });
 
       const result = await scan({ path: path.join(FIXTURES, 'basic-git') });
@@ -251,14 +243,12 @@ describe('scan()', () => {
 
     it('keeps deps array in sync with updateResults', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep, i): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: `v${i + 2}.0.0`,
-            updateType: i === 0 ? 'major' : 'minor',
-          }),
-        );
+        return deps.map((dep, i): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: `v${i + 2}.0.0`,
+          updateType: i === 0 ? 'major' : 'minor',
+        }));
       });
 
       const result = await scan({

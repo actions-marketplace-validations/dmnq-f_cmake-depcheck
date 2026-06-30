@@ -145,12 +145,10 @@ describe('cli', () => {
   describe('update checking (default)', () => {
     it('shows update columns when checking for updates', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'up-to-date',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'up-to-date',
+        }));
       });
 
       await runScan('--path', path.join(FIXTURES, 'basic-git'));
@@ -164,14 +162,12 @@ describe('cli', () => {
 
     it('shows update-available status with latest version', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: 'v99.0.0',
-            updateType: 'major',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: 'v99.0.0',
+          updateType: 'major',
+        }));
       });
 
       await runScan('--path', path.join(FIXTURES, 'basic-git'));
@@ -183,17 +179,15 @@ describe('cli', () => {
     it('shows abbreviated SHA with version for SHA-pinned deps', async () => {
       const newSha = '77a832110d40b0179636f5be8f8781f8299d7e50';
       mockedCheckForUpdates.mockImplementation(async (deps) =>
-        deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            versionSource: 'sha',
-            resolvedTag: '12.1.0',
-            latestVersion: '12.2.0',
-            latestSha: newSha,
-            updateType: 'minor',
-          }),
-        ),
+        deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          versionSource: 'sha',
+          resolvedTag: '12.1.0',
+          latestVersion: '12.2.0',
+          latestSha: newSha,
+          updateType: 'minor',
+        })),
       );
 
       await runScan('--path', path.join(FIXTURES, 'commit-sha', 'CMakeLists.txt'));
@@ -206,13 +200,11 @@ describe('cli', () => {
 
     it('prints check-failed errors to stderr', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'check-failed',
-            error: 'network error',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'check-failed',
+          error: 'network error',
+        }));
       });
 
       await runScan('--path', path.join(FIXTURES, 'basic-git'));
@@ -245,12 +237,10 @@ describe('cli', () => {
 
     it('--json with update checking includes updateCheck and summary', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'up-to-date',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'up-to-date',
+        }));
       });
 
       await runScan('--path', path.join(FIXTURES, 'basic-git'), '--json');
@@ -307,14 +297,12 @@ describe('cli', () => {
   describe('--fail-on-updates', () => {
     it('exits 1 when updates are available (human-readable)', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: 'v99.0.0',
-            updateType: 'major',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: 'v99.0.0',
+          updateType: 'major',
+        }));
       });
 
       const err = await runScan(
@@ -328,12 +316,10 @@ describe('cli', () => {
 
     it('exits 0 when all up-to-date (human-readable)', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'up-to-date',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'up-to-date',
+        }));
       });
 
       await expect(
@@ -343,14 +329,12 @@ describe('cli', () => {
 
     it('exits 1 when updates are available (--json)', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: 'v99.0.0',
-            updateType: 'major',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: 'v99.0.0',
+          updateType: 'major',
+        }));
       });
 
       const err = await runScan(
@@ -368,12 +352,10 @@ describe('cli', () => {
 
     it('exits 0 when all up-to-date (--json)', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'up-to-date',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'up-to-date',
+        }));
       });
 
       await expect(
@@ -392,14 +374,12 @@ describe('cli', () => {
   describe('--update-types', () => {
     it('filters results by update type in human-readable output', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep, i): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: `v${i + 2}.0.0`,
-            updateType: i === 0 ? 'major' : 'minor',
-          }),
-        );
+        return deps.map((dep, i): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: `v${i + 2}.0.0`,
+          updateType: i === 0 ? 'major' : 'minor',
+        }));
       });
 
       await runScan('--path', path.join(FIXTURES, 'basic-git'), '--update-types', 'minor');
@@ -410,14 +390,12 @@ describe('cli', () => {
 
     it('shows filteredCount in summary line when non-zero', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep, i): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: `v${i + 2}.0.0`,
-            updateType: i === 0 ? 'major' : 'minor',
-          }),
-        );
+        return deps.map((dep, i): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: `v${i + 2}.0.0`,
+          updateType: i === 0 ? 'major' : 'minor',
+        }));
       });
 
       await runScan('--path', path.join(FIXTURES, 'basic-git'), '--update-types', 'minor');
@@ -427,14 +405,12 @@ describe('cli', () => {
     it('shows both ignoredCount and filteredCount in summary line', async () => {
       // chain-basic has 3 deps: ignore 1, filter 1 major, keep 1 minor
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep, i): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: `v${i + 2}.0.0`,
-            updateType: i === 0 ? 'major' : 'minor',
-          }),
-        );
+        return deps.map((dep, i): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: `v${i + 2}.0.0`,
+          updateType: i === 0 ? 'major' : 'minor',
+        }));
       });
 
       await runScan(
@@ -474,14 +450,12 @@ describe('cli', () => {
 
     it('includes filteredCount in JSON output', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: 'v2.0.0',
-            updateType: 'major',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: 'v2.0.0',
+          updateType: 'major',
+        }));
       });
 
       await runScan(
@@ -497,14 +471,12 @@ describe('cli', () => {
 
     it('--fail-on-updates only triggers for non-filtered updates', async () => {
       mockedCheckForUpdates.mockImplementation(async (deps) => {
-        return deps.map(
-          (dep): UpdateCheckResult => ({
-            dep,
-            status: 'update-available',
-            latestVersion: 'v2.0.0',
-            updateType: 'major',
-          }),
-        );
+        return deps.map((dep): UpdateCheckResult => ({
+          dep,
+          status: 'update-available',
+          latestVersion: 'v2.0.0',
+          updateType: 'major',
+        }));
       });
 
       // All updates are major, but we only allow minor — so no updates remain, no failure
